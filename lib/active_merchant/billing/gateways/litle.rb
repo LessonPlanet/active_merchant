@@ -1,3 +1,5 @@
+require File.join(File.dirname(__FILE__), 'litle', 'litle_card_token')
+
 module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
     class LitleGateway < Gateway
@@ -37,7 +39,7 @@ module ActiveMerchant #:nodoc:
       self.test_url = 'https://www.testlitle.com/sandbox/communicator/online'
       self.live_url = 'https://payments.litle.com/vap/communicator/online'
 
-      LITLE_SCHEMA_VERSION = '8.10'
+      LITLE_SCHEMA_VERSION = '8.13'
 
       # The countries the gateway supports merchants from as 2 digit ISO country codes
       self.supported_countries = ['US']
@@ -71,13 +73,13 @@ module ActiveMerchant #:nodoc:
         super
       end
 
-      def authorize(money, creditcard_or_token, options = {})
-        to_pass = build_authorize_request(money, creditcard_or_token, options)
+      def authorize(money, creditcard_or_cardtoken, options = {})
+        to_pass = build_authorize_request(money, creditcard_or_cardtoken, options)
         build_response(:authorization, @litle.authorization(to_pass))
       end
 
-      def purchase(money, creditcard_or_token, options = {})
-        to_pass = build_purchase_request(money, creditcard_or_token, options)
+      def purchase(money, creditcard_or_cardtoken, options = {})
+        to_pass = build_purchase_request(money, creditcard_or_cardtoken, options)
         build_response(:sale, @litle.sale(to_pass))
       end
 
@@ -91,8 +93,8 @@ module ActiveMerchant #:nodoc:
         build_response(:void, @litle.void(to_pass))
       end
 
-      def credit(money, identification, options = {})
-        to_pass = create_credit_hash(money, identification, options)
+      def credit(money, identification_or_cardtoken, options = {})
+        to_pass = build_credit_request(money, identification_or_cardtoken, options)
         build_response(:credit, @litle.credit(to_pass))
       end
 
@@ -162,34 +164,57 @@ module ActiveMerchant #:nodoc:
         end
       end
 
-      def build_authorize_request(money, creditcard_or_token, options)
+      def build_authorize_request(money, creditcard_or_cardtoken, options)
         hash = create_hash(money, options)
 
-        add_credit_card_or_token_hash(hash, creditcard_or_token)
+        add_credit_card_or_card_token_hash(hash, creditcard_or_cardtoken)
 
         hash
       end
 
-      def build_purchase_request(money, creditcard_or_token, options)
+      def build_purchase_request(money, creditcard_or_cardtoken, options)
         hash = create_hash(money, options)
 
-        add_credit_card_or_token_hash(hash, creditcard_or_token)
+        add_credit_card_or_card_token_hash(hash, creditcard_or_cardtoken)
 
         hash
       end
 
-      def add_credit_card_or_token_hash(hash, creditcard_or_token)
-        if creditcard_or_token.is_a?(String)
-          add_token_hash(hash, creditcard_or_token)
+      def build_credit_request(money, identification_or_cardtoken, options)
+        hash = create_hash(money, options)
+
+        add_identification_or_cardtoken_hash(hash, identification_or_cardtoken)
+
+        unless identification_or_cardtoken.is_a?(LitleCardToken)
+          hash['orderSource'] = nil
+          hash['orderId'] = nil
+        end
+
+        hash
+      end
+
+      def add_credit_card_or_card_token_hash(hash, creditcard_or_cardtoken)
+        if creditcard_or_cardtoken.is_a?(LitleCardToken)
+          add_card_token_hash(hash, creditcard_or_cardtoken)
         else
-          add_credit_card_hash(hash, creditcard_or_token)
+          add_credit_card_hash(hash, creditcard_or_cardtoken)
         end
       end
 
-      def add_token_hash(hash, creditcard_or_token)
-        token_info = {
-            'litleToken' => creditcard_or_token
-        }
+      def add_identification_or_cardtoken_hash(hash, identification_or_cardtoken)
+        if identification_or_cardtoken.is_a?(LitleCardToken)
+          add_card_token_hash(hash, identification_or_cardtoken)
+        else
+          hash['litleTxnId'] = identification_or_cardtoken
+        end
+      end
+
+      def add_card_token_hash(hash, cardtoken)
+        token_info = { }
+        token_info['litleToken'] = cardtoken.token
+        token_info['expDate'] = cardtoken.exp_date if cardtoken.exp_date?
+        token_info['cardValidationNum'] = cardtoken.verification_value unless cardtoken.verification_value.blank?
+        token_info['type'] = cardtoken.type unless cardtoken.type.blank?
 
         hash['token'] = token_info
         hash
@@ -215,14 +240,6 @@ module ActiveMerchant #:nodoc:
       def create_capture_hash(money, authorization, options)
         hash = create_hash(money, options)
         hash['litleTxnId'] = authorization
-        hash
-      end
-
-      def create_credit_hash(money, identification, options)
-        hash = create_hash(money, options)
-        hash['litleTxnId'] = identification
-        hash['orderSource'] = nil
-        hash['orderId'] = nil
         hash
       end
 
