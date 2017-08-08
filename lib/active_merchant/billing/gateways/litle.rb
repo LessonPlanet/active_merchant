@@ -35,7 +35,7 @@ module ActiveMerchant #:nodoc:
       # * <tt>:phone</tt> - The phone number of the customer.
 
       self.test_url = 'https://www.testlitle.com/sandbox/communicator/online'
-      self.live_url = 'https://payments.litle.com/vap/communicator/online'
+      self.live_url = 'https://payments.vantivcnp.com/vap/communicator/online'
 
       LITLE_SCHEMA_VERSION     = '8.13'
 
@@ -46,10 +46,10 @@ module ActiveMerchant #:nodoc:
       self.supported_cardtypes = [:visa, :master, :american_express, :discover, :diners_club, :jcb]
 
       # The homepage URL of the gateway
-      self.homepage_url        = 'http://www.litle.com/'
+      self.homepage_url        = 'http://www.vantiv.com'
 
       # The name of the gateway
-      self.display_name        = 'Litle & Co.'
+      self.display_name        = 'Vantiv eCommerce'
 
       self.default_currency = 'USD'
 
