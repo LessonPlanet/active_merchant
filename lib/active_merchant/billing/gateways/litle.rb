@@ -73,7 +73,10 @@ module ActiveMerchant #:nodoc:
 
       def authorize(money, creditcard_or_token, options = {})
         to_pass = build_authorize_request(money, creditcard_or_token, options)
-        build_response(:authorization, @litle.authorization(to_pass))
+        x = build_response(:authorization, @litle.authorization(to_pass))
+        pp x
+        Rails.logger.info(x)
+        x
       end
 
       def purchase(money, creditcard_or_token, options = {})
